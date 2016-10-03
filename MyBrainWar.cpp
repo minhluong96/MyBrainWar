@@ -8,6 +8,7 @@
 ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
+LRESULT CALLBACK MyProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
@@ -68,7 +69,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	wcex.hInstance		= hInstance;
 	wcex.hIcon			= LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MYBRAINWAR));
 	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground	= (HBRUSH)(COLOR_BTNFACE + 2);
+	wcex.hbrBackground	= (HBRUSH)(COLOR_BTNFACE + 1);
 	wcex.lpszMenuName	= MAKEINTRESOURCE(IDC_MYBRAINWAR);
 	wcex.lpszClassName	= szWindowClass;
 	wcex.hIconSm		= LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -94,7 +95,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
-
+   
    if (!hWnd)
    {
       return FALSE;
@@ -162,6 +163,8 @@ void onPaint(HWND hWnd)
 	hdc = BeginPaint(hWnd, &ps);
 	// TODO: Add any drawing code here...
 	EndPaint(hWnd, &ps);
+
+	SaveRect(hWnd);
 }
 
 void onDestroy(HWND hWnd)
@@ -171,6 +174,9 @@ void onDestroy(HWND hWnd)
 
 BOOL onCreate(HWND hWnd, LPCREATESTRUCT lpCreateStruct)
 {
+	LoadRect(hWnd);
+	LoadHighScore();
+
 	// Take system's font
 	LOGFONT lf;
 	GetObject(GetStockObject(DEFAULT_GUI_FONT), sizeof(LOGFONT), &lf);
@@ -180,34 +186,40 @@ BOOL onCreate(HWND hWnd, LPCREATESTRUCT lpCreateStruct)
 		lf.lfOutPrecision, lf.lfClipPrecision, lf.lfQuality,
 		lf.lfPitchAndFamily, lf.lfFaceName);
 
+	HFONT bigFont = CreateFont(40, 15, 0, 700, 0, 0, 0, 0, ANSI_CHARSET, OUT_CHARACTER_PRECIS, CLIP_CHARACTER_PRECIS, ANTIALIASED_QUALITY, FIXED_PITCH, TEXT("Arial"));
+
 	Score = 0;
 	Time = 5;
 
 	//Create boxes
-	HWND hwnd = CreateWindowEx(0, L"STATIC", L"Remain time", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER, 50, 100, 100, 40, hWnd, NULL, hInst, NULL);
+	HWND hwnd = CreateWindowEx(0, L"STATIC", L"Remain time", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER, 250, 200, 100, 40, hWnd, NULL, hInst, NULL);
 	SendMessage(hwnd, WM_SETFONT, WPARAM(hFont), TRUE);
 
-	Watch = CreateWindowEx(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER, 160, 100, 100, 40, hWnd, NULL, hInst, NULL);
+	hwnd = CreateWindowEx(0, L"STATIC", L"Brain War", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE  , 255, 30, 200, 80, hWnd, NULL, hInst, NULL);
+	SendMessage(hwnd, WM_SETFONT, WPARAM(bigFont), TRUE);
+
+
+	Watch = CreateWindowEx(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER, 360, 200, 100, 40, hWnd, NULL, hInst, NULL);
 	SendMessage(Watch, WM_SETFONT, WPARAM(hFont), TRUE);
 
-	ScoreBox = CreateWindowEx(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER, 160, 50, 100, 40, hWnd, NULL, hInst, NULL);
+	ScoreBox = CreateWindowEx(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER, 360, 150, 100, 40, hWnd, NULL, hInst, NULL);
 	SendMessage(ScoreBox, WM_SETFONT, WPARAM(hFont), TRUE);
 
-	Button1 = CreateWindowEx(0, L"BUTTON", L"Start", WS_CHILD | WS_VISIBLE, 100, 150, 100, 40, hWnd, (HMENU)IDC_BUTTON_1, hInst, NULL);
+	Button1 = CreateWindowEx(0, L"BUTTON", L"Start", WS_CHILD | WS_VISIBLE, 300, 250, 100, 40, hWnd, (HMENU)IDC_BUTTON_1, hInst, NULL);
 	SendMessage(Button1, WM_SETFONT, WPARAM(hFont), TRUE);
 
-	hwnd = CreateWindowEx(0, L"STATIC", L"Player Score", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER, 50, 50, 100, 40, hWnd, NULL, hInst, NULL);
+	hwnd = CreateWindowEx(0, L"STATIC", L"Player Score", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER, 250, 150, 100, 40, hWnd, NULL, hInst, NULL);
 	SendMessage(hwnd, WM_SETFONT, WPARAM(hFont), TRUE);
 
-	Ques = CreateWindowEx(0, L"STATIC", L"Press Start to play", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER, 50, 250, 100, 40, hWnd, NULL, hInst, NULL);
+	Ques = CreateWindowEx(0, L"STATIC", L"Press Start to play", WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE | WS_BORDER, 250, 350, 100, 40, hWnd, NULL, hInst, NULL);
 	SendMessage(Ques, WM_SETFONT, WPARAM(hFont), TRUE);
 
-	Answer = CreateWindowEx(0, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_CENTER, 160, 263, 100, 20, hWnd, NULL, hInst, NULL);
+	Answer = CreateWindowEx(0, L"EDIT", L"", WS_CHILD | WS_VISIBLE | ES_CENTER, 360, 363, 100, 20, hWnd, NULL, hInst, NULL);
 	SendMessage(Answer, WM_SETFONT, WPARAM(hFont), TRUE);
 
-	hwnd = CreateWindowEx(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_WHITERECT, 160, 250, 100, 40, hWnd, NULL, hInst, NULL);
+	hwnd = CreateWindowEx(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | SS_WHITERECT, 360, 350, 100, 40, hWnd, NULL, hInst, NULL);
 
-	Button2 = CreateWindowEx(0, L"BUTTON", L"Finish", WS_CHILD | WS_VISIBLE | WS_DISABLED, 100, 300, 100, 40, hWnd, (HMENU)IDC_BUTTON_2, hInst, NULL);
+	Button2 = CreateWindowEx(0, L"BUTTON", L"Finish", WS_CHILD | WS_VISIBLE | WS_DISABLED, 300, 400, 100, 40, hWnd, (HMENU)IDC_BUTTON_2, hInst, NULL);
 	SendMessage(Button2, WM_SETFONT, WPARAM(hFont), TRUE);
 
 	return true;
@@ -223,6 +235,10 @@ void onCommand(HWND hWnd, int id, HWND hwndCtl, UINT codeNotify)
 
 	case IDM_EXIT:
 		DestroyWindow(hWnd);
+		break;
+
+	case IDM_RESET:
+		Reset();
 		break;
 
 	case IDC_BUTTON_1:
@@ -328,17 +344,25 @@ void CheckResult(HWND hWnd)
 	if (result == Result)
 	{
 		Score++;
-		msgBox = MessageBox(hWnd, L"Your answer is correct", L"Congratulations", MB_OK | MB_ICONINFORMATION);
 		WCHAR *score = new WCHAR[5];
 		swprintf(score, 5, L"%d", Score);
 		SetWindowText(ScoreBox, score);
 		SetWindowText(Answer, L"");
+
+		msgBox = MessageBox(hWnd, L"Your answer is correct", L"Congratulations", MB_OK);
 	}
 	else
 	{
-		Score = 0;
-		msgBox = MessageBox(hWnd, L"Your answer is wrong", L"Sorry", MB_OKCANCEL | MB_ICONSTOP);
+		UpdateHighScore();
+
+		//Show score
+		WCHAR *buff = new WCHAR[BUFFSIZE];
+		swprintf(buff, BUFFSIZE, L"High Score: %d\nYour score: %d", HighScore, Score);
+		msgBox = MessageBox(hWnd, buff, L"Your answer is wrong", MB_OKCANCEL | MB_ICONSTOP);
+		
+		//Reset score and window
 		WCHAR *score = new WCHAR[5];
+		Score = 0;
 		swprintf(score, 5, L"%d", Score);
 		SetWindowText(ScoreBox, score);
 		SetWindowText(Answer, L"");
@@ -350,6 +374,53 @@ void CheckResult(HWND hWnd)
 	}
 	else
 	{
-		
+		//Do nothing here
 	}
+}
+
+void UpdateHighScore()
+{
+	if (Score > HighScore)
+	{
+		HighScore = Score;
+
+		WCHAR *path = new WCHAR[BUFFSIZE];
+		WCHAR *buff = new WCHAR[BUFFSIZE];
+
+		//Take current path
+		GetCurrentDirectory(BUFFSIZE, path);
+		wcscat_s(path, BUFFSIZE, L"\\config.ini");
+		
+		//Write highscore
+		swprintf(buff, BUFFSIZE, L"%d", HighScore);
+		WritePrivateProfileString(L"app", L"HighScore", buff, path);
+	}
+	else
+	{
+		//Do nothing
+	}
+}
+
+void LoadHighScore()
+{
+	WCHAR *path = new WCHAR[BUFFSIZE];
+	WCHAR *buff = new WCHAR[BUFFSIZE];
+
+	//Take current path
+	GetCurrentDirectory(BUFFSIZE, path);
+	wcscat_s(path, BUFFSIZE, L"\\config.ini");
+
+	GetPrivateProfileString(L"app", L"HighScore", L"0", buff, BUFFSIZE, path);
+	HighScore = _wtoi(buff);
+}
+
+void Reset()
+{
+	HighScore = 0;
+	WCHAR *path = new WCHAR[BUFFSIZE];
+	//Take current path
+	GetCurrentDirectory(BUFFSIZE, path);
+	wcscat_s(path, BUFFSIZE, L"\\config.ini");
+
+	WritePrivateProfileString(L"app", L"HighScore", 0, path);
 }
